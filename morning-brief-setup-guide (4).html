@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBRE Claude Morning Brief | Setup Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cbre: #003F2D;
+  --cbre-dark: #002A1F;
+  --cbre-light: #1a5942;
+  --teal: #00796B;
+  --w: #FFF;
+  --ow: #FAFBFC;
+  --g50: #F8F9FA;
+  --g100: #F1F3F5;
+  --g200: #E9ECEF;
+  --g300: #DEE2E6;
+  --g400: #ADB5BD;
+  --g500: #6C757D;
+  --g600: #495057;
+  --g700: #343A40;
+  --g800: #212529;
+  --ok: #1B7A3D;
+  --ok-bg: #E8F5E9;
+  --am: #E65100;
+  --am-bg: #FFF3E0;
+  --danger: #C62828;
+  --danger-bg: #FFEBEE;
+  --info: #1565C0;
+  --info-bg: #E3F2FD;
+  --gold: #C5A900;
+  --gold-light: #E8D76B;
+  --gold-bg: #FFF9DB;
+  --r: 8px;
+  --rl: 12px;
+  --rxl: 16px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cbre);
+  color: var(--g800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.layout {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 36px 24px 60px;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+.sidebar { position: sticky; top: 24px; align-self: start; z-index: 10; max-height: calc(100vh - 48px); overflow-y: auto; }
+.sidebar-inner {
+  background: var(--w);
+  border-radius: var(--rl);
+  padding: 22px 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.2);
+}
+.sb-brand {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--g200);
+}
+.sb-nav { display: flex; flex-direction: column; gap: 1px; }
+.sb-nav a {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--g600);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 5px;
+  transition: all .12s;
+  border-left: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.sb-nav a:hover, .sb-nav a.active {
+  background: var(--g50);
+  color: var(--cbre);
+  border-left-color: var(--cbre);
+}
+.sb-nav a .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--g400);
+  margin-right: 8px;
+  min-width: 18px;
+  font-weight: 600;
+}
+.sb-meta {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--g200);
+  font-size: 10.5px;
+  color: var(--g500);
+  line-height: 1.5;
+}
+
+.main { display: flex; flex-direction: column; gap: 24px; }
+
+.card {
+  background: var(--w);
+  border-radius: var(--rl);
+  padding: 32px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+}
+.card.compact { padding: 24px; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, var(--w) 0%, var(--g50) 100%);
+  border-radius: var(--rl);
+  padding: 40px 36px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  border-left: 6px solid var(--cbre);
+}
+.hero-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 10px;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  line-height: 1.15;
+  color: var(--cbre);
+  margin-bottom: 12px;
+  font-weight: 900;
+}
+.hero-sub {
+  font-size: 17px;
+  color: var(--g600);
+  max-width: 720px;
+  line-height: 1.5;
+}
+.hero-meta {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--g200);
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--g600);
+}
+.hero-meta .pill {
+  background: var(--cbre);
+  color: var(--w);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+/* Section heads */
+.sec-head { margin-bottom: 18px; }
+.sec-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--teal);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: block;
+}
+.sec-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--cbre);
+  line-height: 1.2;
+}
+.sec-lede {
+  font-size: 15px;
+  color: var(--g600);
+  margin-top: 10px;
+  max-width: 720px;
+}
+
+/* Reality Check */
+.reality { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+@media (max-width: 700px) { .reality { grid-template-columns: 1fr; } }
+.reality-col {
+  padding: 22px;
+  border-radius: var(--r);
+}
+.reality-col.bad { background: var(--danger-bg); border-left: 4px solid var(--danger); }
+.reality-col.good { background: var(--ok-bg); border-left: 4px solid var(--ok); }
+.reality-col h4 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.reality-col.bad h4 { color: var(--danger); }
+.reality-col.good h4 { color: var(--ok); }
+.reality-col p { font-size: 14px; color: var(--g700); line-height: 1.55; }
+.reality-col ul { margin-top: 10px; padding-left: 18px; }
+.reality-col li { font-size: 14px; color: var(--g700); margin-bottom: 6px; }
+
+.connector-viz {
+  margin-top: 24px;
+  background: var(--g50);
+  border-radius: var(--r);
+  padding: 22px;
+  border: 1px solid var(--g200);
+}
+.connector-viz-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.connector-viz-head h5 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cbre);
+}
+.connector-viz-head .stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--g500);
+  font-weight: 500;
+}
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.tool-chip {
+  background: var(--w);
+  border: 1px solid var(--g300);
+  padding: 10px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tool-chip .icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--info-bg);
+  color: var(--info);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.tool-chip.missing { background: var(--danger-bg); border-color: var(--danger); border-style: dashed; }
+.tool-chip.missing .icon { background: var(--danger); color: var(--w); }
+.tool-chip .name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--g700);
+  font-weight: 500;
+}
+.tool-chip.missing .name { color: var(--danger); font-weight: 600; }
+
+.callout-banner {
+  margin-top: 24px;
+  background: var(--cbre);
+  color: var(--w);
+  border-radius: var(--r);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.callout-banner .icon-box {
+  width: 44px;
+  height: 44px;
+  background: rgba(255,255,255,.15);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 22px;
+}
+.callout-banner .text { font-size: 14px; line-height: 1.5; }
+.callout-banner .text strong { font-weight: 700; }
+
+/* Path Selector */
+.path-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 700px) { .path-tabs { grid-template-columns: 1fr; } }
+.path-card {
+  background: var(--g50);
+  border: 2px solid var(--g200);
+  border-radius: var(--rl);
+  padding: 24px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+}
+.path-card:hover { border-color: var(--cbre-light); background: var(--w); }
+.path-card.active {
+  background: var(--w);
+  border-color: var(--cbre);
+  box-shadow: 0 4px 14px rgba(0,63,45,.15);
+}
+.path-card .path-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--teal);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.path-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cbre);
+  margin-bottom: 8px;
+  font-family: 'Playfair Display', serif;
+}
+.path-card p { font-size: 13.5px; color: var(--g600); margin-bottom: 14px; line-height: 1.5; }
+.path-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.path-stat {
+  font-size: 11px;
+  color: var(--g500);
+  display: flex;
+  flex-direction: column;
+}
+.path-stat .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cbre);
+}
+.path-card.active::after {
+  content: '✓';
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 26px;
+  height: 26px;
+  background: var(--cbre);
+  color: var(--w);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+.path-card .recommend-badge {
+  position: absolute;
+  top: -10px;
+  right: 18px;
+  background: var(--gold);
+  color: var(--cbre-dark);
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.path-content { display: none; }
+.path-content.active { display: block; }
+
+/* Steps */
+.steps { display: flex; flex-direction: column; gap: 16px; }
+.step {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 18px;
+  padding: 20px;
+  background: var(--g50);
+  border-radius: var(--r);
+  border-left: 3px solid var(--cbre);
+}
+.step-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--cbre);
+  line-height: 1;
+}
+.step-body h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--g800);
+  margin-bottom: 6px;
+}
+.step-body p { font-size: 13.5px; color: var(--g600); margin-bottom: 10px; line-height: 1.55; }
+.step-body p:last-child { margin-bottom: 0; }
+.step-body ul { padding-left: 18px; margin-top: 6px; }
+.step-body li { font-size: 13.5px; color: var(--g600); margin-bottom: 4px; line-height: 1.55; }
+
+.code-block {
+  background: var(--cbre-dark);
+  color: #B8D4C7;
+  padding: 14px 16px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 10px;
+  position: relative;
+  overflow-x: auto;
+  white-space: pre;
+}
+.code-block .copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  color: var(--w);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all .15s;
+}
+.code-block .copy-btn:hover { background: rgba(255,255,255,.2); }
+.code-block .copy-btn.copied { background: var(--ok); border-color: var(--ok); }
+.code-block .comment { color: #7A9988; }
+.code-block .key { color: #E8D76B; }
+
+/* Option blocks for sub-choices within a step */
+.option-block {
+  background: var(--w);
+  border: 1px solid var(--g200);
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-top: 14px;
+}
+.option-block.recommended { border-left: 3px solid var(--ok); }
+.option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 8px;
+}
+.option-label .badge {
+  background: var(--cbre);
+  color: var(--w);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.option-label .rec-badge {
+  background: var(--ok);
+  color: var(--w);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.option-block h5 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cbre);
+  margin-bottom: 8px;
+}
+.option-block p { font-size: 13px; color: var(--g600); margin-bottom: 8px; line-height: 1.55; }
+.option-block ul { padding-left: 18px; margin: 6px 0 10px; }
+.option-block li { font-size: 13px; color: var(--g600); margin-bottom: 4px; line-height: 1.5; }
+.option-block .platform-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--g500);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+/* Troubleshooting list */
+.trouble-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Tool identifier badge - clear distinction between Standard chat and Cowork modes */
+.tool-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.tool-tag .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tool-tag.web {
+  background: #E3F2FD;
+  color: #1565C0;
+  border: 1px solid #BBDEFB;
+}
+.tool-tag.web .dot { background: #1565C0; }
+.tool-tag.cowork {
+  background: #F3E5F5;
+  color: #7B1FA2;
+  border: 1px solid #E1BEE7;
+}
+.tool-tag.cowork .dot { background: #7B1FA2; }
+.tool-tag .sub {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+  opacity: 0.85;
+}
+
+/* Tool comparison panel */
+.tools-intro {
+  background: var(--g50);
+  border-radius: var(--rl);
+  padding: 22px 24px;
+  margin-bottom: 22px;
+  border-top: 4px solid var(--cbre);
+}
+.tools-intro h4 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cbre);
+  margin-bottom: 10px;
+}
+.tools-intro p { font-size: 14px; color: var(--g700); line-height: 1.55; margin-bottom: 14px; }
+.tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px) { .tools-grid { grid-template-columns: 1fr; } }
+.tool-card {
+  background: var(--w);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--g200);
+}
+.tool-card.web { border-left: 3px solid #1565C0; }
+.tool-card.cowork { border-left: 3px solid #7B1FA2; }
+.tool-card h5 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--g800);
+  margin-bottom: 4px;
+}
+.tool-card .where {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--g500);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.tool-card p { font-size: 12.5px; color: var(--g600); line-height: 1.5; margin-bottom: 8px; }
+.tool-card .uses-for {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cbre);
+  letter-spacing: 0.3px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--g200);
+}
+.trouble-item {
+  background: var(--g50);
+  border-left: 3px solid var(--am);
+  border-radius: 6px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.trouble-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--am);
+  background: var(--am-bg);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trouble-item .problem {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--g800);
+  margin-bottom: 4px;
+}
+.trouble-item .fix {
+  font-size: 13px;
+  color: var(--g600);
+  line-height: 1.5;
+}
+.trouble-item .fix strong { color: var(--ok); font-weight: 700; }
+
+.tip {
+  margin-top: 12px;
+  background: var(--info-bg);
+  border-left: 3px solid var(--info);
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--g700);
+}
+.tip strong { color: var(--info); font-weight: 700; }
+
+.warn {
+  margin-top: 12px;
+  background: var(--am-bg);
+  border-left: 3px solid var(--am);
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--g700);
+}
+.warn strong { color: var(--am); font-weight: 700; }
+
+/* Sample Brief */
+.sample-wrap {
+  background: linear-gradient(135deg, var(--g50) 0%, var(--w) 100%);
+  border: 1px solid var(--g200);
+  border-radius: var(--rl);
+  padding: 24px;
+  margin-top: 12px;
+}
+.sample-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--g200);
+  margin-bottom: 16px;
+}
+.sample-header .date {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+.sample-header h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cbre);
+  font-family: 'Playfair Display', serif;
+}
+.sample-glance {
+  background: var(--cbre);
+  color: var(--w);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.sample-glance .glance-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.sample-glance .glance-text { font-size: 14px; line-height: 1.5; }
+
+.sample-section {
+  margin-bottom: 16px;
+}
+.sample-section:last-child { margin-bottom: 0; }
+.sample-section h5 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cbre);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sample-item {
+  background: var(--w);
+  border: 1px solid var(--g200);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--g700);
+}
+.sample-item .time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--g500);
+  font-weight: 600;
+}
+.sample-item .priority {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.priority.high { background: var(--danger-bg); color: var(--danger); }
+.priority.med { background: var(--am-bg); color: var(--am); }
+.priority.low { background: var(--info-bg); color: var(--info); }
+
+/* Pro Tips Grid */
+.tips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+.tip-card {
+  background: var(--g50);
+  border-radius: var(--r);
+  padding: 18px;
+  border-top: 3px solid var(--cbre);
+}
+.tip-card .tip-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--teal);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.tip-card h5 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cbre);
+  margin-bottom: 8px;
+}
+.tip-card p { font-size: 13px; color: var(--g600); line-height: 1.5; }
+
+/* Comparison */
+.compare-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 13.5px;
+}
+.compare-tbl th, .compare-tbl td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--g200);
+}
+.compare-tbl thead th {
+  background: var(--cbre);
+  color: var(--w);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.compare-tbl thead th:first-child { border-radius: 6px 0 0 0; }
+.compare-tbl thead th:last-child { border-radius: 0 6px 0 0; }
+.compare-tbl tbody td:first-child {
+  font-weight: 600;
+  color: var(--g800);
+  font-size: 13px;
+}
+.compare-tbl tbody tr:hover td { background: var(--g50); }
+.compare-tbl .yes { color: var(--ok); font-weight: 700; }
+.compare-tbl .no { color: var(--danger); font-weight: 700; }
+.compare-tbl .partial { color: var(--am); font-weight: 700; }
+
+/* Checklist */
+.checklist {
+  background: var(--w);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-top: 16px;
+}
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--g200);
+  cursor: pointer;
+}
+.checklist-item:last-child { border-bottom: none; }
+.checklist-item .box {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--g300);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--w);
+  font-size: 14px;
+  font-weight: 700;
+}
+.checklist-item.done .box {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.checklist-item .text {
+  font-size: 14px;
+  color: var(--g700);
+  line-height: 1.5;
+}
+.checklist-item.done .text { text-decoration: line-through; color: var(--g400); }
+.checklist-item .text strong { color: var(--cbre); font-weight: 600; }
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--g200);
+  border-radius: 3px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cbre) 0%, var(--teal) 100%);
+  width: 0;
+  transition: width .3s;
+}
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--g500);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Footer */
+.footer {
+  background: var(--cbre-dark);
+  color: var(--w);
+  border-radius: var(--rl);
+  padding: 28px 32px;
+  margin-top: 8px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+@media (max-width: 700px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer h4 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 12px;
+}
+.footer p { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.85); margin-bottom: 6px; }
+.footer .sig {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  color: var(--w);
+  margin-bottom: 4px;
+}
+
+.scroll-top {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  background: var(--cbre);
+  color: var(--w);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+  border: none;
+  font-size: 20px;
+}
+.scroll-top.show { opacity: 1; pointer-events: auto; }
+.scroll-top:hover { background: var(--cbre-dark); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+      <div class="sb-brand">Guide Contents</div>
+      <nav class="sb-nav">
+        <a href="#hero" class="active"><span class="num">00</span>Overview</a>
+        <a href="#reality"><span class="num">01</span>The Send Issue</a>
+        <a href="#paths"><span class="num">02</span>Two Paths</a>
+        <a href="#path1"><span class="num">03</span>Quick Start</a>
+        <a href="#path2"><span class="num">04</span>Full Automation</a>
+        <a href="#sample"><span class="num">05</span>Sample Output</a>
+        <a href="#tips"><span class="num">06</span>Pro Tips</a>
+        <a href="#trouble"><span class="num">07</span>Troubleshooting</a>
+        <a href="#checklist"><span class="num">08</span>Quick Start List</a>
+      </nav>
+      <div class="sb-meta">
+        Built by Charlie Moran<br>
+        CBRE Science & Innovation<br>
+        SF Bay Area
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <div class="hero-tag">CBRE Claude Setup Guide</div>
+      <h1>Your CBRE Claude Morning Brief</h1>
+      <p class="hero-sub">A practical, end-to-end walkthrough of getting a daily AI-generated briefing from your CBRE Claude app. Two modes, same app: the 5-minute manual setup using standard chat, or the fully automated version with Cowork enabled for scheduling.</p>
+      <div class="hero-meta">
+        <span class="pill">10 min read</span>
+        <span>Updated for Claude 4.x and Cowork</span>
+        <span>Tested on Mac and Windows</span>
+      </div>
+    </section>
+
+    <!-- REALITY CHECK -->
+    <section class="card" id="reality">
+      <div class="sec-head">
+        <span class="sec-num">01 · Reality Check</span>
+        <h2 class="sec-title">Why Claude won't send the email (yet)</h2>
+        <p class="sec-lede">The most common stumbling block. It is not a plan tier issue, and upgrading will not fix it. Here is what is actually happening.</p>
+      </div>
+
+      <div class="reality">
+        <div class="reality-col bad">
+          <h4>What you've been told</h4>
+          <ul>
+            <li>You need the $2,600 advanced plan to unlock email sending</li>
+            <li>The M365 connector permissions just need to be changed</li>
+            <li>This is a license or seat-level restriction</li>
+          </ul>
+        </div>
+        <div class="reality-col good">
+          <h4>What's actually happening</h4>
+          <ul>
+            <li>The M365 connector is read and search only by design</li>
+            <li>No send_email tool exists in the connector to enable</li>
+            <li>Plan tier does not change which tools a connector exposes</li>
+            <li>This is a Microsoft connector capability question, not an Anthropic plan question</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="connector-viz">
+        <div class="connector-viz-head">
+          <h5>The 7 tools your M365 connector exposes today</h5>
+          <span class="stat">All read-only · No write capability</span>
+        </div>
+        <div class="tool-grid">
+          <div class="tool-chip"><span class="icon">R</span><span class="name">outlook_email_search</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">outlook_calendar_search</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">sharepoint_search</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">sharepoint_folder_search</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">chat_message_search</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">find_meeting_availability</span></div>
+          <div class="tool-chip"><span class="icon">R</span><span class="name">read_resource</span></div>
+          <div class="tool-chip missing"><span class="icon">✕</span><span class="name">send_email (missing)</span></div>
+        </div>
+      </div>
+
+      <div class="callout-banner">
+        <div class="icon-box">→</div>
+        <div class="text"><strong>Bottom line:</strong> Toggling permissions to "Always allow" does not add tools that aren't there. The plan upgrade does not change connector capabilities. The two real solutions are below.</div>
+      </div>
+    </section>
+
+    <!-- PATHS -->
+    <section class="card" id="paths">
+      <div class="sec-head">
+        <span class="sec-num">02 · Two Modes, One App</span>
+        <h2 class="sec-title">Pick your level of automation</h2>
+        <p class="sec-lede">CBRE Claude is the app already installed on your work computer (Windows or Mac, deployed by CBRE IT). You can use it two ways. Both are inside the same app. The difference is whether you enable Cowork for automation.</p>
+      </div>
+
+      <div class="tools-intro">
+        <h4>Before we start: two modes of the same app</h4>
+        <p>Most people on day one think "Cowork" is a separate product they need to install. It isn't. Cowork is a feature inside CBRE Claude that you turn on. The chat interface is what you're already using. Both modes run in the same app, on the same machine, with the same login.</p>
+        <div class="tools-grid">
+          <div class="tool-card web">
+            <h5>Mode A · Standard chat</h5>
+            <div class="where">already available in your CBRE Claude</div>
+            <p>The chat interface you already use. Type, get a response, copy/paste. Nothing to enable, nothing to install. This is how you generate the brief manually each morning.</p>
+            <div class="uses-for">Path 1 uses this</div>
+          </div>
+          <div class="tool-card cowork">
+            <h5>Mode B · Cowork enabled</h5>
+            <div class="where">automation features inside CBRE Claude</div>
+            <p>Cowork is the automation layer inside the same CBRE Claude app. It runs skills on a schedule and writes files to your folders. No separate install. Same login, same app, same machine. Just turn it on.</p>
+            <div class="uses-for">Path 2 uses this</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="path-tabs">
+        <div class="path-card active" onclick="jumpTo('path1'); switchPath('quick')">
+          <div class="path-label">Path 1 · Standard chat</div>
+          <h3>Manual brief, one-click send</h3>
+          <p>Generate the brief in your CBRE Claude app each morning, then push it to Outlook with one click. No new software, no IT involvement, no special features required.</p>
+          <div class="path-stats">
+            <div class="path-stat"><span>Setup time</span><span class="val">5 min</span></div>
+            <div class="path-stat"><span>Daily effort</span><span class="val">~2 min</span></div>
+            <div class="path-stat"><span>Cost</span><span class="val">$0 add-on</span></div>
+          </div>
+        </div>
+        <div class="path-card" onclick="jumpTo('path2'); switchPath('auto')">
+          <div class="recommend-badge">Recommended</div>
+          <div class="path-label">Path 2 · Cowork enabled</div>
+          <h3>Fully automated daily brief</h3>
+          <p>With Cowork turned on in your CBRE Claude app, a scheduled skill runs the brief each morning, drops it to a folder, and (optionally) sends it as an email. Zero daily effort once it's set up.</p>
+          <div class="path-stats">
+            <div class="path-stat"><span>Setup time</span><span class="val">~30 min</span></div>
+            <div class="path-stat"><span>Daily effort</span><span class="val">0 min</span></div>
+            <div class="path-stat"><span>Cost</span><span class="val">Cowork license</span></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="compare-tbl">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Path 1: Standard chat</th>
+            <th>Path 2: Cowork enabled</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>What's needed</td><td>Just CBRE Claude (you already have it)</td><td>CBRE Claude + Cowork enabled</td></tr>
+          <tr><td>Read Outlook + Calendar</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td>Generate structured brief</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td>Runs automatically on a schedule</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Drops file into a designated folder</td><td class="no">No</td><td class="yes">Yes</td></tr>
+          <tr><td>Sends the brief as an email</td><td class="partial">One-click via Outlook</td><td class="partial">Auto-send with OAuth</td></tr>
+          <tr><td>Daily attention required</td><td class="partial">~2 min</td><td class="yes">None once scheduled</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tip" style="margin-top: 18px;"><strong>You don't have to pick one forever.</strong> Most people start with Path 1 to learn the workflow, then upgrade to Path 2 once it's clear what they actually want in the brief. The skills you build in Path 1 (project setup, prompt template) carry over directly when you enable Cowork.</div>
+    </section>
+
+    <!-- PATH 1 -->
+    <section class="card" id="path1">
+      <div class="sec-head">
+        <span class="tool-tag web"><span class="dot"></span>CBRE Claude · Standard Chat <span class="sub">(no Cowork needed)</span></span>
+        <span class="sec-num">03 · Path 1</span>
+        <h2 class="sec-title">Manual brief in standard chat</h2>
+        <p class="sec-lede">Everything in this path happens inside the <strong>CBRE Claude app</strong> you already have on your work computer, using standard chat. Nothing extra to install or enable. 5 minutes to set up. Run it each morning in about 2 minutes.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Open CBRE Claude on your work computer</h4>
+            <p>Launch the CBRE Claude app from your Start menu (Windows) or Applications folder (Mac). Sign in with your CBRE credentials if you aren't already. You'll land on the main chat interface.</p>
+            <div class="tip"><strong>If you don't see Claude installed:</strong> Submit a ticket to CBRE IT to get it deployed to your machine. It's part of the standard Claude Enterprise rollout. Most CBRE laptops already have it.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Create a dedicated Morning Brief project</h4>
+            <p>In the left sidebar, click <strong>Projects</strong>, then <strong>+ New Project</strong>. Name it "Morning Brief" or similar. Projects isolate context, save custom instructions, and let you upload reference files (like your listing tracker).</p>
+            <div class="tip"><strong>Why this matters:</strong> Without a dedicated project, you re-explain who you are, what listings you cover, and what format you want every single morning. The project eliminates that.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Add project instructions with your context</h4>
+            <p>Inside the new project, find <strong>Project Settings → Custom Instructions</strong>. Paste a structured template covering your role, team, active deals, and brief preferences.</p>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<span class="comment"># MORNING BRIEF CONTEXT</span>
+
+<span class="key">Role:</span> [Your title], CBRE [Your Practice], [Your Market]
+<span class="key">Team:</span> [Manager], [Direct reports], [Coordinator]
+
+<span class="key">Active Listings (priority order):</span>
+  1. [Address] | [Owner], [SF], [status]
+  2. [Address] | [Owner], [SF], [status]
+  3. ...
+
+<span class="key">Active Tenant Rep Clients:</span>
+  1. [Client] | [Size], [Submarket], [Stage]
+  2. ...
+
+<span class="key">Brief Format Preferences:</span>
+  - No em dashes
+  - Bullets and headers, not prose walls
+  - Lead with the answer
+  - Use native CRE terminology (NNN, FSG, TI, NER, LOI)
+  - One screen max
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Verify your M365 connector is connected</h4>
+            <p>Go to <strong>Settings → Connectors</strong>. Confirm Microsoft 365 shows as connected and all 7 read tools are enabled. Set tool permissions to <strong>Always allow</strong> to skip approval prompts. (Reminder: this does not add a send tool, but it speeds up daily runs.)</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Use a structured morning prompt</h4>
+            <p>Save this as a reusable prompt. Paste it into the Morning Brief project each morning.</p>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+Generate my morning brief for today.
+
+Search my Outlook inbox for any flagged or urgent messages
+from the last 24 hours. Pull my calendar for today. Cross
+reference the two and flag connections (e.g., a tour with
+a tenant rep who emailed yesterday).
+
+Then run a web search for new VC funding rounds in Bay Area
+life science and AI from the last 7 days, Series A through C.
+
+Structure:
+  1. Top of the Day (1 sentence anchor)
+  2. Critical (deadlines, deals at risk, urgent replies needed)
+  3. Today's Calendar (with prep notes per meeting)
+  4. Active Deal Status Changes
+  5. Market Intel (funding rounds, new listings, comps)
+  6. Action Items (3-5 max, ordered by priority)
+
+Keep it scannable in 60 seconds. No em dashes.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>Send it to yourself with one click</h4>
+            <p>After Claude generates the brief, type: <strong>"Draft this as an email to me."</strong> Claude uses its built-in message compose tool, which produces the email with an <strong>Open in Mail</strong> button. Click it. The whole brief lands in a composed Outlook message. Review, send, done.</p>
+            <div class="tip"><strong>Why this beats waiting for native send:</strong> You retain editorial control, the email is sent from your actual Outlook (correct signature, correct sent folder), and there is no IT involvement.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <h4>(Optional) Archive each brief in a synced folder</h4>
+            <p>Standard chat briefs live in your Claude chat history. To create a searchable archive (useful for going back to find "when did we first hear about this prospect?"), save each one as a markdown file.</p>
+            <ul>
+              <li>After the brief is generated, copy the content</li>
+              <li>Save as a new file: <code>2026-05-15-brief.md</code></li>
+              <li>Drop it in a synced folder: OneDrive Personal/Morning Briefs/ or a SharePoint library</li>
+              <li>Use the same folder structure as Path 2 below: Year/Month/file.md</li>
+            </ul>
+            <div class="tip"><strong>Worth the 10 seconds:</strong> After a few months you have a date-stamped archive that's fully searchable. "What did we discuss about this prospect last quarter?" becomes a 5-second answer instead of a 30-minute Outlook dig.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PATH 2 -->
+    <section class="card" id="path2">
+      <div class="sec-head">
+        <span class="tool-tag cowork"><span class="dot"></span>CBRE Claude · Cowork Enabled <span class="sub">(automation features on)</span></span>
+        <span class="sec-num">04 · Path 2</span>
+        <h2 class="sec-title">Automated brief with Cowork</h2>
+        <p class="sec-lede">Same CBRE Claude app as Path 1. The difference is that <strong>Cowork is enabled</strong>, which unlocks scheduling and file output. The schedule runs the brief on its own and writes it to a folder. Mine triggers at 7:30am every weekday and is waiting before I open the laptop.</p>
+      </div>
+
+      <div class="warn"><strong>Same app, different mode:</strong> Path 1 used the standard chat interface inside CBRE Claude. Path 2 uses the same CBRE Claude app but with Cowork features turned on. You don't install anything new. Cowork is a feature flag inside the app you already have.</div>
+
+      <div class="steps" style="margin-top: 18px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Confirm Cowork is enabled in your CBRE Claude</h4>
+            <p>Open CBRE Claude on your work computer (same app as Path 1). Go to <strong>Settings → Cowork</strong>. Confirm it's enabled. Cowork is part of the standard CBRE Claude deployment.</p>
+            <div class="tip" style="margin-top: 12px;"><strong>Hardware:</strong> Cowork only runs on the machine where CBRE Claude is installed. For unattended daily runs (the brief at 7:30am whether or not you're at your desk), dedicate a small machine (Mac Mini, NUC, or a spare laptop in a drawer) plugged in and set to never sleep. Your daily-driver laptop closing for the day will not run the task.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Choose where the brief will be saved</h4>
+            <p>Cowork writes the brief as a file to a folder on your machine. Two options based on your environment. Pick one before building the skill.</p>
+
+            <div class="option-block">
+              <div class="option-label"><span class="badge">Option A</span> OneDrive personal</div>
+              <h5>For solo workflows, mobile access via OneDrive app</h5>
+              <p>Use when:</p>
+              <ul>
+                <li>You work mostly solo and don't need team visibility</li>
+                <li>You want the brief accessible on your phone via the OneDrive mobile app</li>
+                <li>You already have OneDrive sync configured and working</li>
+              </ul>
+
+              <div class="warn"><strong>The CBRE gotcha to avoid:</strong> CBRE Group Policy applies Known Folder Move, which redirects your Documents folder into OneDrive. This makes the OS see Documents as a different device than your C: drive. Cowork scheduled tasks writing to <code>Documents/Morning Briefs/</code> can fail silently with EXDEV (cross-device link) errors. The task appears to run but no file ever appears. This is the single most common Cowork setup failure in CBRE environments.</div>
+
+              <p style="margin-top: 12px;"><strong>The fix:</strong> Don't use the Documents path. Use the explicit OneDrive path:</p>
+
+              <div class="platform-label">Windows</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>C:\Users\[username]\OneDrive - CBRE\Morning Briefs\</div>
+
+              <div class="platform-label">Mac</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>/Users/[username]/Library/CloudStorage/OneDrive-CBRE/Morning Briefs/</div>
+
+              <div class="tip" style="margin-top: 12px;"><strong>Test before scheduling:</strong> Run the skill manually once. Verify the file appears in BOTH File Explorer/Finder AND OneDrive web. If it appears in one but not the other, you have a sync issue to fix before scheduling.</div>
+            </div>
+
+            <div class="option-block recommended">
+              <div class="option-label"><span class="rec-badge">Recommended for CBRE</span> Option B</div>
+              <h5>SharePoint Teams site</h5>
+              <p>Use when:</p>
+              <ul>
+                <li>Team visibility of briefs is desirable (associate or coordinator can reference)</li>
+                <li>You want the most reliable option in CBRE Group Policy environments</li>
+                <li>You're in an environment where OneDrive Known Folder Move has caused issues before</li>
+              </ul>
+
+              <div class="warn"><strong>Step Zero (people miss this and the whole setup breaks):</strong> Before Cowork can write to SharePoint, you must sync the document library to File Explorer. SharePoint URLs are not writable filesystem paths.</div>
+
+              <p style="margin-top: 12px;"><strong>Step Zero setup:</strong></p>
+              <ul>
+                <li>Open the SharePoint site in browser</li>
+                <li>Navigate to the document library (usually called "Documents")</li>
+                <li>Click the <strong>Sync</strong> button at the top of the library</li>
+                <li>Approve the OneDrive prompt that pops up</li>
+                <li>Wait 30 seconds for the library to appear in File Explorer / Finder</li>
+                <li>Verify the SharePoint library shows under your name with a SharePoint icon</li>
+              </ul>
+
+              <p style="margin-top: 8px;">After Step Zero, paths look like:</p>
+
+              <div class="platform-label">Windows</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>C:\Users\[username]\CBRE\[Team Site Name] - Documents\Morning Briefs\</div>
+
+              <div class="platform-label">Mac</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>/Users/[username]/Library/CloudStorage/OneDrive-SharedLibraries-CBRE/[Team Site Name] - Documents/Morning Briefs/</div>
+            </div>
+
+            <p style="margin-top: 14px; font-size: 13.5px; color: var(--g600);"><strong>Recommended folder structure (either option):</strong></p>
+            <div class="code-block">Morning Briefs/
+  2026/
+    05-May/
+      2026-05-15-brief.md
+      2026-05-16-brief.md
+      2026-05-17-brief.md</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Build your morning brief skill</h4>
+            <p>Skills are reusable workflows defined in a SKILL.md file. Create one called <code>morning-briefing</code> that captures structure, data sources, and output format. Cowork follows it every time the skill is triggered.</p>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<span class="key">name:</span> morning-briefing
+<span class="key">description:</span> Generates the daily CRE morning briefing
+  and writes to disk.
+
+<span class="key">triggers:</span>
+  - phrase: "morning brief"
+  - schedule: "weekdays 7:30am"
+
+<span class="key">inputs:</span>
+  - calendar: Outlook calendar via M365 connector
+  - inbox: Outlook flagged/urgent emails, last 24h
+  - market_data: web search for VC funding + new listings
+
+<span class="key">workflow:</span>
+  1. Pull today's calendar
+  2. Pull flagged inbox items from last 24h
+  3. Cross-reference calendar against inbox
+  4. Web search: Bay Area VC funding, last 7 days
+  5. Web search: new listings in target submarkets
+  6. Compose structured brief
+  7. Write output to configured path
+
+<span class="key">output:</span>
+  format: markdown
+  filename_pattern: "YYYY-MM-DD-brief.md"
+  path: [your OneDrive or SharePoint path from Step 2]
+
+<span class="key">format_rules:</span>
+  - No em dashes or en dashes
+  - Bullets and short headers
+  - Native CRE terminology
+  - One-screen length
+  - Structure: Top of Day | Critical | Calendar
+              | Market Intel | Action Items
+            </div>
+            <div class="tip"><strong>Customize freely:</strong> Add your active listings, tenant rep clients, team names, and prospecting target profile directly into the skill so the brief is grounded in your book without re-explaining context every day.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Schedule the task</h4>
+            <p>Two paths depending on your OS. Cowork's built-in scheduler is easiest where available. Native OS schedulers work as fallback.</p>
+
+            <div class="option-block">
+              <div class="option-label"><span class="badge">Mac</span></div>
+              <h5>Cowork built-in scheduler (easiest)</h5>
+              <ul>
+                <li>Open CBRE Claude, navigate to Cowork settings</li>
+                <li>Scheduled Tasks → Add</li>
+                <li>Trigger: 7:30 AM, Monday through Friday</li>
+                <li>Action: Run skill <code>morning-briefing</code></li>
+                <li>Machine must be awake at trigger time. For unattended operation: dedicated Mac Mini, plugged in, set to never sleep, auto-login enabled.</li>
+              </ul>
+              <p style="margin-top: 8px; font-size: 13px;"><strong>Alternative:</strong> LaunchAgent in <code>~/Library/LaunchAgents/</code> for more flexibility, but Cowork scheduler is simpler if it works for your trigger needs.</p>
+            </div>
+
+            <div class="option-block">
+              <div class="option-label"><span class="badge">Windows</span></div>
+              <h5>Task Scheduler (built into Windows)</h5>
+              <ul>
+                <li>Open Task Scheduler from Start menu</li>
+                <li>Create Basic Task → Name it "Morning Brief"</li>
+                <li>Trigger: Weekly, Mon-Fri, 7:30 AM</li>
+                <li>Action: Start a program → point to CBRE Claude executable with skill invocation argument</li>
+                <li>Settings tab: check "Run whether user is logged on or not" AND "Wake the computer to run this task"</li>
+                <li>Machine must be plugged in. Battery-powered laptops will not wake to run scheduled tasks by default.</li>
+              </ul>
+            </div>
+
+            <div class="tip" style="margin-top: 14px;"><strong>My setup:</strong> Mac Mini in the home office, plugged in 24/7, set to never sleep, Cowork running scheduled task at 7:30am every weekday. Brief drops into OneDrive/Morning Briefs/ with the date in the filename. I open it on my phone with coffee, then again on my laptop when I sit down. Zero manual work to generate it.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Test before going live</h4>
+            <p>Before you trust the schedule, prove the skill works end-to-end:</p>
+            <ul>
+              <li>Run the skill manually from Cowork (don't wait for the schedule)</li>
+              <li>Verify the file appears in your File Explorer / Finder at the expected path</li>
+              <li>Open OneDrive web (or SharePoint web) and confirm the file synced up</li>
+              <li>Open the file and confirm the content matches your expected format</li>
+              <li>If everything passed: enable the schedule. Tomorrow morning, the brief appears on its own.</li>
+            </ul>
+            <div class="warn"><strong>Don't skip testing.</strong> The most common failure mode is the scheduled task running successfully but writing nowhere (silent EXDEV error). You'll only catch this if you test manually first.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>(Optional) Configure Outlook OAuth for auto-send</h4>
+            <p>To skip the "Open in Mail" step entirely and have Cowork place the email directly in your outbox, you need Outlook OAuth and an Azure app registration. This is enterprise IT work, not user-side configuration.</p>
+            <div class="warn"><strong>Reality check:</strong> This requires a CBRE IT ticket. Expect timelines measured in weeks, not days. Until then, Cowork can still drop the brief as a file to your synced folder, which gives you 90% of the value. The file is just as useful as the email for most workflows.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SAMPLE OUTPUT -->
+    <section class="card" id="sample">
+      <div class="sec-head">
+        <span class="sec-num">05 · Sample Output</span>
+        <h2 class="sec-title">What a good morning brief actually looks like</h2>
+        <p class="sec-lede">Mock structure based on a typical day. Yours will be tailored to your book and team.</p>
+      </div>
+
+      <div class="sample-wrap">
+        <div class="sample-header">
+          <div>
+            <div class="date">Tuesday, May 12, 2026</div>
+            <h3>Morning Brief</h3>
+          </div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--g500);">Generated 07:30 AM</div>
+        </div>
+
+        <div class="sample-glance">
+          <div class="glance-label">Top of the Day</div>
+          <div class="glance-text">Tour at 2pm with Acme Bio on 575 Forbes high bay. Tenant rep sent updated power requirements at 6:14pm last night. Read the email before the tour.</div>
+        </div>
+
+        <div class="sample-section">
+          <h5>Critical</h5>
+          <div class="sample-item">
+            <span class="time">DUE TODAY</span>
+            <span>Greenspan renewal counter response (Nat W. asked for status by EOD)</span>
+            <span class="priority high">High</span>
+          </div>
+          <div class="sample-item">
+            <span class="time">EOW</span>
+            <span>Bruker sublease v5 economics update (Austin Arper waiting)</span>
+            <span class="priority high">High</span>
+          </div>
+        </div>
+
+        <div class="sample-section">
+          <h5>Today's Calendar</h5>
+          <div class="sample-item">
+            <span class="time">9:00 AM</span>
+            <span>ES Leasing Update call with James, Tim Mason</span>
+            <span class="priority med">Prep</span>
+          </div>
+          <div class="sample-item">
+            <span class="time">11:00 AM</span>
+            <span>OPMP ownership sync (Nat Williams, LPC)</span>
+            <span class="priority med">Prep</span>
+          </div>
+          <div class="sample-item">
+            <span class="time">2:00 PM</span>
+            <span>Acme Bio tour, 575 Forbes (Mike, Charlie, Acme team)</span>
+            <span class="priority high">Tour</span>
+          </div>
+        </div>
+
+        <div class="sample-section">
+          <h5>Market Intel</h5>
+          <div class="sample-item">
+            <span class="time">FUNDING</span>
+            <span>Profluent closed Series B, $35M (could match East Bay 30-40K SF target)</span>
+            <span class="priority med">Prospect</span>
+          </div>
+        </div>
+
+        <div class="sample-section">
+          <h5>Action Items</h5>
+          <div class="sample-item">
+            <span class="time">1</span>
+            <span>Send Greenspan counter response by 5pm</span>
+            <span class="priority high">High</span>
+          </div>
+          <div class="sample-item">
+            <span class="time">2</span>
+            <span>Review Acme Bio updated power requirements before 2pm tour</span>
+            <span class="priority high">High</span>
+          </div>
+          <div class="sample-item">
+            <span class="time">3</span>
+            <span>Outreach to Profluent CFO re: East Bay availability</span>
+            <span class="priority med">Med</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRO TIPS -->
+    <section class="card" id="tips">
+      <div class="sec-head">
+        <span class="sec-num">06 · Pro Tips</span>
+        <h2 class="sec-title">Things that materially improve the brief</h2>
+        <p class="sec-lede">Patterns I've learned the hard way over a year of running this every morning.</p>
+      </div>
+
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-num">TIP 01</div>
+          <h5>Cross-reference is everything</h5>
+          <p>The brief that catches "you have a 2pm tour and the tenant rep emailed last night" is 10x more valuable than two separate lists of meetings and emails.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 02</div>
+          <h5>Constrain to one screen</h5>
+          <p>If your brief takes more than 60 seconds to read, you'll stop reading it. Cap it at 6 sections, 3-5 items each. Force prioritization.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 03</div>
+          <h5>VC funding feeds prospecting</h5>
+          <p>A weekly funding round scan in your tenant target profile (sector, stage, geography) is the best prospecting trigger in life science and AI.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 04</div>
+          <h5>Use a consistent structure</h5>
+          <p>Same sections, same order, every day. Your brain stops reading and starts scanning. That's the goal: you should be done with it before your second sip of coffee.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 05</div>
+          <h5>Iterate the prompt weekly</h5>
+          <p>Every Friday, ask Claude: "What did I miss this week that should have been in the brief?" Use those gaps to refine the prompt.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 06</div>
+          <h5>Save your briefs</h5>
+          <p>A folder of date-stamped briefs becomes a searchable archive. "When did we first hear about that prospect?" becomes a 10-second search.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 07</div>
+          <h5>Build a feedback loop</h5>
+          <p>End each brief with: "Anything off-base or missing?" Tell Claude, then update the project instructions. The brief gets sharper every week.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">TIP 08</div>
+          <h5>Don't share confidential context broadly</h5>
+          <p>Active deal economics, tenant identities, and pricing live in the project. Don't paste them into web searches or external API calls.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TROUBLESHOOTING -->
+    <section class="card" id="trouble">
+      <div class="sec-head">
+        <span class="sec-num">07 · Troubleshooting</span>
+        <h2 class="sec-title">Common failure modes and fixes</h2>
+        <p class="sec-lede">When something stops working, it is almost always one of these. Listed in order of how often each comes up.</p>
+      </div>
+
+      <div class="trouble-list">
+        <div class="trouble-item">
+          <div class="trouble-num">1</div>
+          <div>
+            <div class="problem">EXDEV error: brief generates but no file appears (OneDrive)</div>
+            <div class="fix"><strong>Fix:</strong> You're writing to <code>Documents/Morning Briefs/</code> through the Known Folder Move layer. Change the output path to the explicit OneDrive path: <code>OneDrive - CBRE\Morning Briefs\</code> on Windows or <code>~/Library/CloudStorage/OneDrive-CBRE/Morning Briefs/</code> on Mac.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">2</div>
+          <div>
+            <div class="problem">SharePoint output path returns "not found" or write error</div>
+            <div class="fix"><strong>Fix:</strong> You skipped Step Zero. Open the SharePoint site in your browser, click the Sync button at the top of the library, approve the OneDrive prompt, wait 30 seconds. The library will appear in File Explorer / Finder. Now Cowork can write to that local path.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">3</div>
+          <div>
+            <div class="problem">Brief appears but content is empty or sparse</div>
+            <div class="fix"><strong>Fix:</strong> M365 connector has likely lost authentication. Open Claude Desktop, go to settings, find the M365 connector, click reauthorize. Sign in again with your CBRE credentials. Re-run the skill manually to verify before trusting the schedule again.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">4</div>
+          <div>
+            <div class="problem">Scheduled task fires at 7:30am but no brief generated</div>
+            <div class="fix"><strong>Fix:</strong> Machine was asleep. On Windows, enable "Wake the computer to run this task" in Task Scheduler settings and confirm machine is plugged in. On Mac, use a machine set to never sleep, or wake it manually. Battery-powered laptops on battery will not wake for scheduled tasks by default.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">5</div>
+          <div>
+            <div class="problem">Schedule fires but Cowork can't find the skill</div>
+            <div class="fix"><strong>Fix:</strong> Cowork skills are account-wide, not project-scoped. Open Cowork, confirm the morning-briefing skill is installed at the account level (not just inside a specific project). Reinstall if needed.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">6</div>
+          <div>
+            <div class="problem">Brief generates but quality is inconsistent day to day</div>
+            <div class="fix"><strong>Fix:</strong> The skill prompt or project instructions are too vague. Add concrete examples of what "Critical" vs "Pro tip" looks like for you. Specify exactly which submarkets to scan, which sectors qualify as prospect signals, and what format violations to avoid (em dashes, prose walls, etc.). The more specific the rules, the more consistent the output.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">7</div>
+          <div>
+            <div class="problem">M365 connector says "always allow" but Claude still asks every time</div>
+            <div class="fix"><strong>Fix:</strong> The toggle did not save. Re-open settings, set each individual tool permission (outlook_email_search, outlook_calendar_search, etc.) to Always allow one by one, then close and re-open Claude Desktop.</div>
+          </div>
+        </div>
+
+        <div class="trouble-item">
+          <div class="trouble-num">8</div>
+          <div>
+            <div class="problem">Setup works for one week, then suddenly stops</div>
+            <div class="fix"><strong>Fix:</strong> Most likely an OS update broke the scheduled task, or the Claude Desktop app updated and reset settings. Open the scheduler, confirm the task is still enabled. Open Claude Desktop, confirm Cowork is still enabled and the skill is still installed. Re-run manually to verify.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKLIST -->
+    <section class="card" id="checklist">
+      <div class="sec-head">
+        <span class="sec-num">08 · Quick Start Checklist</span>
+        <h2 class="sec-title">Your action list</h2>
+        <p class="sec-lede">Tap each item as you complete it. Progress saves locally.</p>
+      </div>
+
+      <div class="progress-text">
+        <span>Setup progress</span>
+        <span id="progress-count">0 of 8 complete</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+      <div class="checklist">
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Create a dedicated Claude project</strong> called "Morning Brief"</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Add custom instructions</strong> with your team, listings, and format preferences</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Verify M365 connector</strong> is connected with all 7 tools set to "Always allow"</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Save your morning prompt</strong> as a reusable template (or pin a chat)</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Run it tomorrow</strong> and use "Open in Mail" to send to yourself</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>Run for one week</strong>, refine the prompt and project instructions based on gaps</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>(Optional) Install Cowork</strong> on Claude Desktop for full automation</div>
+        </div>
+        <div class="checklist-item" onclick="toggleCheck(this)">
+          <div class="box"></div>
+          <div class="text"><strong>(Optional) Set scheduled task</strong> for daily delivery to a synced folder</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-grid">
+        <div>
+          <h4>Built By</h4>
+          <p class="sig">Charlie Moran</p>
+          <p>Vice President · CBRE Science & Innovation</p>
+          <p>SF Bay Area · charlie.moran@cbre.com</p>
+          <p>+1 650 388 2134</p>
+        </div>
+        <div>
+          <h4>Questions?</h4>
+          <p>Happy to do a 15-minute screen share to walk through setup live. Email or text anytime.</p>
+          <p style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,.5);">This guide is internal to CBRE and not for external distribution.</p>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+
+</div>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// Sidebar active state on scroll
+const sections = document.querySelectorAll('section[id], header[id]');
+const navLinks = document.querySelectorAll('.sb-nav a');
+
+function updateActiveNav() {
+  let current = '';
+  sections.forEach(sec => {
+    const rect = sec.getBoundingClientRect();
+    if (rect.top <= 120) current = sec.id;
+  });
+  navLinks.forEach(l => {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+  });
+  document.getElementById('scrollTop').classList.toggle('show', window.scrollY > 400);
+}
+
+window.addEventListener('scroll', updateActiveNav);
+updateActiveNav();
+
+// Smooth scroll
+navLinks.forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+function jumpTo(id) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function switchPath(which) {
+  document.querySelectorAll('.path-card').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+// Copy buttons
+function copyCode(btn) {
+  const block = btn.parentElement;
+  const text = block.innerText.replace('Copy', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 1800);
+  });
+}
+
+// Checklist
+function toggleCheck(el) {
+  el.classList.toggle('done');
+  if (el.classList.contains('done')) {
+    el.querySelector('.box').textContent = '✓';
+  } else {
+    el.querySelector('.box').textContent = '';
+  }
+  updateProgress();
+  saveProgress();
+}
+
+function updateProgress() {
+  const items = document.querySelectorAll('.checklist-item');
+  const done = document.querySelectorAll('.checklist-item.done').length;
+  const pct = (done / items.length) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-count').textContent = done + ' of ' + items.length + ' complete';
+}
+
+function saveProgress() {
+  try {
+    const states = [];
+    document.querySelectorAll('.checklist-item').forEach(el => {
+      states.push(el.classList.contains('done'));
+    });
+    if (window.storage && window.storage.set) {
+      window.storage.set('checklist_state', JSON.stringify(states));
+    }
+  } catch(e) {}
+}
+
+async function loadProgress() {
+  try {
+    if (window.storage && window.storage.get) {
+      const r = await window.storage.get('checklist_state');
+      if (r && r.value) {
+        const states = JSON.parse(r.value);
+        const items = document.querySelectorAll('.checklist-item');
+        states.forEach((done, i) => {
+          if (done && items[i]) {
+            items[i].classList.add('done');
+            items[i].querySelector('.box').textContent = '✓';
+          }
+        });
+        updateProgress();
+      }
+    }
+  } catch(e) {}
+}
+
+loadProgress();
+</script>
+
+</body>
+</html>
