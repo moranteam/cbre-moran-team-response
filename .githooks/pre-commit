@@ -19,6 +19,15 @@
 #         block unless the person running the commit sets MARKET_GUARD_OVERRIDE=1, which
 #         prints the hits and lets it through.
 #         Deal terms (base rent, TI, free rent, escalations in counters and LOIs) pass.
+#   KEYS: added lines that carry an Airtable personal access token or a Google API key block
+#         (HARD, never overridable); the value is never printed.
+# Modes:
+#   (no arguments)            git runs it as the pre-commit hook on the staged changes.
+#   --range <before> <after>  scans every commit in a pushed range, each against its first
+#                             parent (the GitHub Actions workflow uses this; a zero or missing
+#                             <before> scans every commit reachable from <after>). Reports
+#                             commit, file, line, and rule only, never the matched text, and
+#                             ignores the override.
 # Enable per clone:  git config core.hooksPath .githooks
 exec python3 - "$@" <<'PYEOF'
 import os, re, subprocess, sys, time
@@ -61,6 +70,10 @@ TEXT = [
     ('asking or market rent figure', re.compile(r'(?:asking|average|avg|market|submarket|class [abc])\b[^\n]{0,30}?(?:rents?|rates?)[^\n]{0,30}?' + RATE, re.I)),
     ('lease comp line (tenant, SF, and rent per SF)', re.compile(SFN + r'[^\n]{0,60}?' + RATE + '|' + RATE + r'[^\n]{0,60}?' + SFN)),
     ('comp or availability table', None),
+]
+KEYS = [
+    ('Airtable personal access token', re.compile(r'pat[A-Za-z0-9]{14}\.[a-f0-9]{64}')),
+    ('Google API key', re.compile(r'AIza[0-9A-Za-z_\-]{35}')),
 ]
 DEAL_TERMS = re.compile(r'base rent|\bTI\b|tenant improvement|free rent|abatement|escalat|\bLOI\b|counter|proposal|premises|commencement|renewal option|security deposit', re.I)
 MARKET_WORD = re.compile(MARKET, re.I)
@@ -166,14 +179,14 @@ def onedrive_index():
         open(cache, 'w').write('\n'.join(rows))
     return set(open(cache).read().splitlines())
 
-hard, soft = [], []
-od = None
-for p in staged():
+_OD = None
+
+def check_file(p, data, numbers, added, show_text=True):
+    """All checks for one file. Returns (hard, soft) lists of (path, reason)."""
+    global _OD
+    hard, soft = [], []
     base = os.path.basename(p)
     ext = os.path.splitext(base)[1].lower()
-    if p.startswith('.githooks/'):
-        continue
-    data = blob(p)
     is_text = b'\0' not in data[:8000]
     if ext in DATA_EXT and NAME.search(base):
         hard.append((p, 'file name looks like market data'))
@@ -184,14 +197,82 @@ for p in staged():
                 hard.append((p, label))
                 break
     if ext in DATA_EXT or not is_text:
-        if od is None:
-            od = onedrive_index()
-        if f"{base.lower()}\t{len(data)}" in od:
+        if _OD is None:
+            _OD = onedrive_index()
+        if f"{base.lower()}\t{len(data)}" in _OD:
             hard.append((p, 'identical name and size to a file in OneDrive (copied directly from OneDrive)'))
-    if is_text and not SKIP_TEXT.search(p):
-        numbers, added = added_lines(p)
-        for label, line, snippet in (text_hits(added, numbers) if numbers else []):
-            soft.append((p, f'line {line}: {label}: "{snippet}"'))
+    if is_text and numbers:
+        for k, line in enumerate(added.splitlines()):
+            for label, rx in KEYS:
+                if rx.search(line):
+                    hard.append((p, f'line {numbers[k]}: {label} (value not shown)'))
+        if not SKIP_TEXT.search(p):
+            for label, line, snippet in text_hits(added, numbers):
+                soft.append((p, f'line {line}: {label}' + (f': "{snippet}"' if show_text else '')))
+    return hard, soft
+
+def diff_added(a, b):
+    """Added lines per path between two commits (rename aware), like added_lines for the index."""
+    out = subprocess.run(['git', '-c', 'core.quotePath=false', 'diff', '-M', '--unified=0', '--no-color',
+                          '--no-ext-diff', '--diff-filter=ACMR', a, b],
+                         capture_output=True).stdout.decode('utf-8', 'ignore')
+    res, cur, n = {}, None, 0
+    for line in out.splitlines():
+        if line.startswith('diff --git '):
+            cur = None
+        elif line.startswith('+++ '):
+            cur = line[6:].rstrip('\t') if line.startswith('+++ b/') else None
+            if cur is not None:
+                res.setdefault(cur, ([], []))
+        elif line.startswith('@@'):
+            m = re.search(r'\+(\d+)', line)
+            n = int(m.group(1)) if m else 0
+        elif cur is not None and line.startswith('+'):
+            res[cur][0].append(n)
+            res[cur][1].append(line[1:])
+            n += 1
+    return res
+
+EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
+def run_range(before, after):
+    """Scan every commit in before..after (or all of after's history when before is empty or zero)."""
+    def git(*a):
+        return subprocess.run(['git', *a], capture_output=True, text=True).stdout
+    zero = not before or set(before) == {'0'} or not git('cat-file', '-t', before).strip()
+    revs = git('rev-list', '--reverse', after) if zero else git('rev-list', '--reverse', f'{before}..{after}')
+    commits = revs.split()
+    failed = 0
+    for c in commits:
+        parents = git('rev-list', '--parents', '-n', '1', c).split()[1:]
+        parent = parents[0] if parents else EMPTY_TREE
+        added = diff_added(parent, c)
+        for p, (numbers, lines) in added.items():
+            if p.startswith('.githooks/'):
+                continue
+            data = subprocess.run(['git', 'show', f'{c}:{p}'], capture_output=True).stdout
+            hard, soft = check_file(p, data, numbers, '\n'.join(lines), show_text=False)
+            for path, why in hard + soft:
+                failed += 1
+                m = re.match(r'line (\d+): (.*)', why)
+                if m:
+                    print(f'::error file={path},line={m.group(1)}::market data guard: {m.group(2)} (commit {c[:12]})')
+                else:
+                    print(f'::error file={path}::market data guard: {why} (commit {c[:12]})')
+    print(f'market data guard: scanned {len(commits)} commit(s), {failed} finding(s)')
+    return 1 if failed else 0
+
+if len(sys.argv) >= 2 and sys.argv[1] == '--range':
+    sys.exit(run_range(sys.argv[2] if len(sys.argv) > 2 else '', sys.argv[3] if len(sys.argv) > 3 else 'HEAD'))
+
+hard, soft = [], []
+for p in staged():
+    if p.startswith('.githooks/'):
+        continue
+    numbers, added = added_lines(p)
+    h, t = check_file(p, blob(p), numbers, added)
+    hard += h
+    soft += t
 
 override = os.environ.get('MARKET_GUARD_OVERRIDE') == '1'
 if hard:

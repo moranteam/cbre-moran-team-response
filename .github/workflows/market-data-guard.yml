@@ -1,0 +1,29 @@
+name: Market data guard
+
+# Runs the committed pre-commit hook (.githooks/pre-commit) in --range mode on every commit in
+# every push and pull request, including web uploads and web edits, which skip local hooks.
+# All patterns live in the hook; this file holds none. Findings show file, line, and rule only.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan every commit in the push
+        env:
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          AFTER: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: sh .githooks/pre-commit --range "$BEFORE" "$AFTER"
