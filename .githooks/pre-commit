@@ -1,6 +1,6 @@
 #!/bin/sh
 # pre-commit | moranteam market data guard (rule adopted 2026-09-22, text checks added 2026-09-22,
-#              text checks limited to added lines 2026-09-23)
+#              text checks limited to added lines, --range, keys, allowlist, pre-push 2026-09-23)
 # Blocks commits that add market research data to any repo:
 #   lease comps, tenant demand (tenants in the market, requirements lists),
 #   market statistics and research reports (CBRE Research, MarketIQ, CoStar, VTS exports),
@@ -17,10 +17,14 @@
 #         checked (staged diff, rename detection on): a pure rename adds nothing, a brand new
 #         file is all added lines, and lines a commit leaves alone are not re-checked. Hits
 #         block unless the person running the commit sets MARKET_GUARD_OVERRIDE=1, which
-#         prints the hits and lets it through.
+#         prints the hits and lets it through. The override is refused under Claude Code:
+#         any process Claude Code starts carries CLAUDECODE, and then the override is ignored.
 #         Deal terms (base rent, TI, free rent, escalations in counters and LOIs) pass.
 #   KEYS: added lines that carry an Airtable personal access token or a Google API key block
 #         (HARD, never overridable); the value is never printed.
+# Allowlist: .githooks/market-guard-allow.txt, one 'path | rule label' per line, waives that
+#         one TEXT or export header rule for that one path (never file names, OneDrive copies,
+#         or keys). --range reads it from the pushed tip and warns on any commit that changes it.
 # Modes:
 #   (no arguments)            git runs it as the pre-commit hook on the staged changes.
 #   --range <before> <after>  scans every commit in a pushed range, each against its first
@@ -30,6 +34,10 @@
 #                             by hand it scans every commit reachable from <after> (full audit).
 #                             Reports commit, file, line, and rule only, never the matched text,
 #                             and ignores the override.
+#   --commits <sha>...        scans exactly these commits (the pre-push hook uses this; the
+#                             override behaves as in pre-commit).
+# Local hooks and the Claude Code guard are friction, not enforcement: anyone can skip them.
+# The GitHub Actions scan and the repository rulesets are the only enforcement.
 # Enable per clone:  git config core.hooksPath .githooks
 exec python3 - "$@" <<'PYEOF'
 import os, re, subprocess, sys, time
@@ -182,9 +190,27 @@ def onedrive_index():
     return set(open(cache).read().splitlines())
 
 _OD = None
+ALLOW_FILE = '.githooks/market-guard-allow.txt'
 
-def check_file(p, data, numbers, added, show_text=True):
-    """All checks for one file. Returns (hard, soft) lists of (path, reason)."""
+def load_allow(rev=None):
+    """Allowlist entries (path, rule) from .githooks/market-guard-allow.txt, one per line as
+    'path | rule label'. rev None reads the staged copy (pre-commit); otherwise the copy in rev."""
+    spec = f'{rev}:{ALLOW_FILE}' if rev else f':{ALLOW_FILE}'
+    text = subprocess.run(['git', 'show', spec], capture_output=True).stdout.decode('utf-8', 'ignore')
+    if not text and not rev and os.path.isfile(ALLOW_FILE):
+        text = open(ALLOW_FILE, encoding='utf-8').read()
+    out = set()
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#') and '|' in line:
+            path, rule = (x.strip() for x in line.split('|', 1))
+            out.add((path, rule))
+    return out
+
+def check_file(p, data, numbers, added, show_text=True, allow=frozenset()):
+    """All checks for one file. Returns (hard, soft) lists of (path, reason). An allowlist entry
+    (path, rule) waives that TEXT rule or export header rule for that path only; file name,
+    OneDrive, and key checks can never be waived."""
     global _OD
     hard, soft = [], []
     base = os.path.basename(p)
@@ -195,7 +221,7 @@ def check_file(p, data, numbers, added, show_text=True):
     if ext in CONTENT_EXT and is_text:
         text = data.decode('utf-8', 'ignore')
         for label, rx in CONTENT:
-            if rx.search(text):
+            if rx.search(text) and (p, label) not in allow:
                 hard.append((p, label))
                 break
     if ext in DATA_EXT or not is_text:
@@ -210,6 +236,8 @@ def check_file(p, data, numbers, added, show_text=True):
                     hard.append((p, f'line {numbers[k]}: {label} (value not shown)'))
         if not SKIP_TEXT.search(p):
             for label, line, snippet in text_hits(added, numbers):
+                if (p, label) in allow:
+                    continue
                 soft.append((p, f'line {line}: {label}' + (f': "{snippet}"' if show_text else '')))
     return hard, soft
 
@@ -237,70 +265,99 @@ def diff_added(a, b):
 
 EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
-def run_range(before, after):
-    """Scan every commit in before..after (or all of after's history when before is empty or zero)."""
-    def git(*a):
-        return subprocess.run(['git', *a], capture_output=True, text=True).stdout
-    zero = not before or set(before) == {'0'} or not git('cat-file', '-t', before).strip()
-    branch = os.environ.get('GITHUB_REF_NAME', '') if os.environ.get('GITHUB_EVENT_NAME') == 'push' else ''
-    if not zero:
-        revs = git('rev-list', '--reverse', f'{before}..{after}')
-    elif branch:
-        # New branch pushed to GitHub: only the commits no other branch already holds.
-        others = [r for r in git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin').split()
-                  if r not in (f'refs/remotes/origin/{branch}', 'refs/remotes/origin/HEAD')]
-        revs = git('rev-list', '--reverse', after, '--not', *others) if others else git('rev-list', '--reverse', after)
-    else:
-        revs = git('rev-list', '--reverse', after)
-    commits = revs.split()
-    failed = 0
+def git_out(*a):
+    return subprocess.run(['git', *a], capture_output=True, text=True).stdout
+
+def scan_commits(commits, allow):
+    """Run every check on the lines each commit adds against its first parent. Returns (hard, soft)
+    lists of (commit, path, reason)."""
+    hard, soft = [], []
     for c in commits:
-        parents = git('rev-list', '--parents', '-n', '1', c).split()[1:]
+        parents = git_out('rev-list', '--parents', '-n', '1', c).split()[1:]
         parent = parents[0] if parents else EMPTY_TREE
-        added = diff_added(parent, c)
-        for p, (numbers, lines) in added.items():
+        for p, (numbers, lines) in diff_added(parent, c).items():
             if p.startswith('.githooks/'):
                 continue
             data = subprocess.run(['git', 'show', f'{c}:{p}'], capture_output=True).stdout
-            hard, soft = check_file(p, data, numbers, '\n'.join(lines), show_text=False)
-            for path, why in hard + soft:
-                failed += 1
-                m = re.match(r'line (\d+): (.*)', why)
-                if m:
-                    print(f'::error file={path},line={m.group(1)}::market data guard: {m.group(2)} (commit {c[:12]})')
-                else:
-                    print(f'::error file={path}::market data guard: {why} (commit {c[:12]})')
-    print(f'market data guard: scanned {len(commits)} commit(s), {failed} finding(s)')
-    return 1 if failed else 0
+            h, s = check_file(p, data, numbers, '\n'.join(lines), show_text=False, allow=allow)
+            hard += [(c, path, why) for path, why in h]
+            soft += [(c, path, why) for path, why in s]
+    return hard, soft
+
+def run_range(before, after):
+    """GitHub Actions: every commit in before..after. New branch (zero before) in Actions: only the
+    commits no other branch holds; by hand: the full history of after. Override never applies."""
+    zero = not before or set(before) == {'0'} or not git_out('cat-file', '-t', before).strip()
+    branch = os.environ.get('GITHUB_REF_NAME', '') if os.environ.get('GITHUB_EVENT_NAME') == 'push' else ''
+    if not zero:
+        revs = git_out('rev-list', '--reverse', f'{before}..{after}')
+    elif branch:
+        others = [r for r in git_out('for-each-ref', '--format=%(refname)', 'refs/remotes/origin').split()
+                  if r not in (f'refs/remotes/origin/{branch}', 'refs/remotes/origin/HEAD')]
+        revs = git_out('rev-list', '--reverse', after, '--not', *others) if others else git_out('rev-list', '--reverse', after)
+    else:
+        revs = git_out('rev-list', '--reverse', after)
+    commits = revs.split()
+    allow = load_allow(after)
+    hard, soft = scan_commits(commits, allow)
+    for c in commits:
+        parents = git_out('rev-list', '--parents', '-n', '1', c).split()[1:]
+        if git_out('diff', '--name-only', parents[0] if parents else EMPTY_TREE, c, '--', ALLOW_FILE).strip():
+            print(f'::warning file={ALLOW_FILE}::market data guard: allowlist changed in commit {c[:12]}; review it')
+    for c, path, why in hard + soft:
+        m = re.match(r'line (\d+): (.*)', why)
+        if m:
+            print(f'::error file={path},line={m.group(1)}::market data guard: {m.group(2)} (commit {c[:12]})')
+        else:
+            print(f'::error file={path}::market data guard: {why} (commit {c[:12]})')
+    print(f'market data guard: scanned {len(commits)} commit(s), {len(hard) + len(soft)} finding(s), {len(allow)} allowlist entr{"y" if len(allow) == 1 else "ies"}')
+    return 1 if hard or soft else 0
+
+def override_state():
+    """The override applies only outside Claude Code: any process Claude Code starts carries CLAUDECODE."""
+    requested = os.environ.get('MARKET_GUARD_OVERRIDE') == '1'
+    under_claude = bool(os.environ.get('CLAUDECODE'))
+    return requested and not under_claude, requested and under_claude
+
+def report(hard, soft, where):
+    override, refused = override_state()
+    if hard:
+        sys.stderr.write(f'\nBLOCKED by the market data guard ({where}):\n')
+        for p, why in hard:
+            sys.stderr.write(f'  {p}: {why}\n')
+    if soft:
+        head = 'WARNING (overridden with MARKET_GUARD_OVERRIDE=1)' if override else 'BLOCKED'
+        sys.stderr.write(f'\n{head}: market statistics found in text ({where}):\n')
+        for p, why in soft:
+            sys.stderr.write(f'  {p}: {why}\n')
+    if refused and (hard or soft):
+        sys.stderr.write('\nMARKET_GUARD_OVERRIDE is ignored under Claude Code (CLAUDECODE is set).\n')
+    if hard or (soft and not override):
+        sys.stderr.write('\nMarket research data stays on OneDrive and in Supabase, never on GitHub.\n'
+                         'Remove the figures (or unstage the file and add it to .gitignore).\n'
+                         'Deal terms in counters and LOIs are fine. If a text hit is a false positive or a\n'
+                         'made up example, Charlie can commit with MARKET_GUARD_OVERRIDE=1 git commit ...\n'
+                         'in his own terminal. Claude never sets the override and never uses --no-verify.\n\n')
+        return 1
+    return 0
 
 if len(sys.argv) >= 2 and sys.argv[1] == '--range':
     sys.exit(run_range(sys.argv[2] if len(sys.argv) > 2 else '', sys.argv[3] if len(sys.argv) > 3 else 'HEAD'))
 
+if len(sys.argv) >= 2 and sys.argv[1] == '--commits':
+    commits = [c for c in sys.argv[2:] if c]
+    hard, soft = scan_commits(commits, load_allow('HEAD'))
+    sys.exit(report([(f'{c[:12]} {p}', w) for c, p, w in hard], [(f'{c[:12]} {p}', w) for c, p, w in soft],
+                    '.githooks/pre-push'))
+
 hard, soft = [], []
+allow = load_allow()
 for p in staged():
     if p.startswith('.githooks/'):
         continue
     numbers, added = added_lines(p)
-    h, t = check_file(p, blob(p), numbers, added)
+    h, t = check_file(p, blob(p), numbers, added, allow=allow)
     hard += h
     soft += t
-
-override = os.environ.get('MARKET_GUARD_OVERRIDE') == '1'
-if hard:
-    sys.stderr.write('\nBLOCKED by the market data guard (.githooks/pre-commit):\n')
-    for p, why in hard:
-        sys.stderr.write(f'  {p}: {why}\n')
-if soft:
-    head = 'WARNING (overridden with MARKET_GUARD_OVERRIDE=1)' if override else 'BLOCKED'
-    sys.stderr.write(f'\n{head}: market statistics found in text (.githooks/pre-commit):\n')
-    for p, why in soft:
-        sys.stderr.write(f'  {p}: {why}\n')
-if hard or (soft and not override):
-    sys.stderr.write('\nMarket research data stays on OneDrive and in Supabase, never on GitHub.\n'
-                     'Remove the figures (or unstage the file and add it to .gitignore).\n'
-                     'Deal terms in counters and LOIs are fine. If a text hit is a false positive or a\n'
-                     'made up example, Charlie can commit with MARKET_GUARD_OVERRIDE=1 git commit ...\n'
-                     'Claude never sets the override and never uses --no-verify.\n\n')
-    sys.exit(1)
-sys.exit(0)
+sys.exit(report(hard, soft, '.githooks/pre-commit'))
 PYEOF

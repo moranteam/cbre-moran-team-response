@@ -1,0 +1,21 @@
+#!/bin/sh
+# pre-push | moranteam market data guard backstop (2026-09-23)
+# Scans every commit this push would send that the remote does not already have, with the same
+# checks as .githooks/pre-commit (via its --commits mode). A commit that skipped pre-commit (for
+# example --no-verify, an alias, or a script) is still stopped here before it leaves the machine.
+# This is friction, not enforcement: git push --no-verify skips it. The GitHub Actions scan and the
+# repository rulesets are the only enforcement.
+remote="$1"
+z=0000000000000000000000000000000000000000
+commits=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$z" ] && continue            # branch deletion: nothing to send
+  if [ "$remote_sha" != "$z" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    range=$(git rev-list "$remote_sha..$local_sha")
+  else
+    range=$(git rev-list "$local_sha" --not --remotes="$remote")   # new branch
+  fi
+  commits="$commits $range"
+done
+[ -z "$(echo $commits | tr -d ' ')" ] && exit 0
+exec sh "$(dirname "$0")/pre-commit" --commits $commits
