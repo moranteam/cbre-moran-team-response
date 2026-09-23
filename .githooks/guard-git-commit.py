@@ -110,15 +110,19 @@ def inspect(cmd, cwd, depth, where, repos):
             words = [w for w in words[1:] if not w.startswith('-') and '=' not in w]
         if not words:
             continue
+        if words[0] in ('cd', 'pushd') and len(words) > 1:
+            # Follow directory changes so aliases and hooksPath are judged in the right repo.
+            cwd = os.path.normpath(os.path.join(cwd, os.path.expanduser(words[1])))
+            continue
         if words[0] in ('bash', 'sh', 'zsh', 'dash', 'ksh') and '-c' in words[1:-1]:
             inspect(words[words.index('-c') + 1], cwd, depth + 1, f'{where}, {words[0]} -c', repos)
             continue
         if 'git' in words:
             check_git(words[words.index('git'):], cwd, depth, where, repos)
         # Script files the command runs: read them and apply the same rules.
-        candidates = []
+        candidates = [words[k + 1] for k, w in enumerate(words[:-1]) if w in ('<', '<<<')]  # input redirection
         if words[0] in SCRIPT_RUNNERS:
-            candidates = [w for w in words[1:] if not w.startswith('-')][:1]
+            candidates += [w for w in words[1:] if not w.startswith('-') and w not in ('<', '<<<')][:1]
         elif '/' in words[0] or words[0].endswith(('.sh', '.py')):
             candidates = [words[0]]
         for c in candidates:
