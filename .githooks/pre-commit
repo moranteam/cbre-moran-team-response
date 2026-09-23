@@ -1,10 +1,19 @@
 #!/bin/sh
-# pre-commit | moranteam market data guard (rule adopted 2026-09-22)
+# pre-commit | moranteam market data guard (rule adopted 2026-09-22, text checks added 2026-09-22)
 # Blocks commits that add market research data to any repo:
 #   lease comps, tenant demand (tenants in the market, requirements lists),
 #   market statistics and research reports (CBRE Research, MarketIQ, CoStar, VTS exports),
 #   availability data, and files copied directly from OneDrive.
 # Code, skills, instructions, client names, and deal terms are fine.
+#
+# Two kinds of checks:
+#   HARD: data files named like market data, export headers in data files, OneDrive copies.
+#         Always block.
+#   TEXT: every staged text file, .md and code included, is scanned for market statistics
+#         written into prose or code (vacancy, absorption, availability, comps, asking rent
+#         per SF, SF counts next to vacant or leased). Hits block unless the person running
+#         the commit sets MARKET_GUARD_OVERRIDE=1, which prints the hits and lets it through.
+#         Deal terms (base rent, TI, free rent, escalations in counters and LOIs) pass.
 # Enable per clone:  git config core.hooksPath .githooks
 exec python3 - "$@" <<'PYEOF'
 import os, re, subprocess, sys, time
@@ -12,18 +21,88 @@ import os, re, subprocess, sys, time
 DATA_EXT = {'.pdf', '.xlsx', '.xls', '.xlsm', '.csv', '.tsv', '.json', '.log', '.txt', '.parquet',
             '.gz', '.zip', '.docx', '.pptx', '.html', '.htm'}
 CONTENT_EXT = {'.csv', '.tsv', '.json', '.txt', '.log', '.html', '.htm', '.xml'}
+SKIP_TEXT = re.compile(r'(^|/)(\.githooks/|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|node_modules/|venv/|\.venv/)')
 NAME = re.compile(r'comp(s|set|_set| set)?\b|lease.?(comps|transactions)|availab|avails\b|tenants?.?in.?(the.?)?market'
                   r'|requirements?.?list|tenant.?demand|demand.?data|market.?(report|stats|statistics|survey|data|view)'
                   r'|marketiq|market.?iq|costar|vts.?(export|import)|figures.?q[1-4]|q[1-4].?\d{2,4}.*figures'
                   r'|snapshot.?q[1-4]|quarter.?end.?presentation|research.?report|brochure|onedrive', re.I)
+# Export headers are matched case sensitive: real exports use these exact column titles,
+# while code that maps column names (lowercase strings) is not data. Two column titles must be
+# separated by table delimiters only (comma, tab, pipe, or an HTML cell boundary, with at most a
+# few other column titles between them), so UI labels and messages in scripts do not match.
+SEP = r'(?:\s*(?:[,\t|]|</t[hd]>\s*<t[hd][^>]*>)\s*)'
+CELL = r'[^,\t|<>\n]{0,40}'
+def header(a, b):
+    return re.compile('(?:' + a + ')(?:' + SEP + CELL + '){0,10}?' + SEP + '(?:' + b + ')')
 CONTENT = [
-    ('CoStar export header', re.compile(r'PropertyID|Building Class.{0,80}RBA|Total Available Space \(SF\)|Percent Leased', re.I)),
-    ('lease comp table', re.compile(r'(Sign(ed)? Date|Lease Sign Date).{0,200}(Starting Rent|Effective Rent|Free Rent|TI Allowance)', re.I | re.S)),
-    ('VTS export header', re.compile(r'Deal Stage.{0,120}(Tenant Name|Requirement Size|Proposal Date)', re.I | re.S)),
+    ('CoStar export header', re.compile(r'PropertyID|Building Class.{0,80}RBA|Total Available Space \(SF\)|Percent Leased')),
+    ('lease comp table', header(r'Sign(?:ed)? Date|Lease Sign Date', r'Starting Rent|Effective Rent|Free Rent|TI Allowance')),
+    ('VTS export header', header(r'Deal Stage', r'Tenant Name|Requirement Size|Proposal Date')),
     ('research report marker', re.compile(r'MarketView|CBRE Research|Figures \| Q[1-4]|MarketIQ', re.I)),
-    ('availability table', re.compile(r'(Available SF|SF Available|Direct Available|Sublease Available).{0,200}(Asking Rent|Rate|Available Date)', re.I | re.S)),
+    ('availability table', header(r'Available SF|SF Available|Direct Available|Sublease Available', r'Asking Rent|Rate|Available Date')),
     ('tenants in market list', re.compile(r'tenants in (the )?market|active requirements?', re.I)),
 ]
+
+# TEXT checks: market statistics written into any text file.
+NUM = r'[~+\-−(]?\d[\d,]*(?:\.\d+)?'
+PCT = NUM + r'\s?%'
+SFN = NUM + r'\s?(?:[KkMm]\s?)?(?:R?SF|RSF|msf|MSF|sf)\b'
+RATE = r'\$\s?\d+(?:\.\d+)?\s?(?:/\s?(?:R?SF|sf|RSF)(?:/\s?(?:mo|yr|month|year))?|\s?(?:NNN|FSG|FS|IG|MG)\b)'
+MARKET = r'(?:vacan\w*|occupan\w*|absorption|availability rate|submarket|asking rents?|asking rates?|market rents?|lease comps?|\bcomps?\b|\bcomp set\b)'
+TEXT = [
+    ('vacancy or occupancy figure', re.compile(r'(?:vacan\w*|occupan\w*|leased\b|availability rate)[^\n]{0,40}?' + PCT + '|' + PCT + r'[^\n]{0,15}?(?:vacan\w*|occupan\w*|occupied|leased\b)', re.I)),
+    ('absorption figure', re.compile(r'absorption[^\n]{0,40}?(?:' + SFN + '|' + NUM + r'\s?[KkMm]\b|' + PCT + ')|(?:' + SFN + '|' + NUM + r'\s?[KkMm]\b)[^\n]{0,20}?(?:net )?absorption', re.I)),
+    ('SF count next to vacant, available, or absorbed', re.compile(SFN + r'[^\n]{0,25}?\b(?:vacant|available|availability|absorbed|under construction|delivered|sublease available)\b|\b(?:vacant|available|under construction)\b[^\n]{0,15}?' + SFN, re.I)),
+    ('asking or market rent figure', re.compile(r'(?:asking|average|avg|market|submarket|class [abc])\b[^\n]{0,30}?(?:rents?|rates?)[^\n]{0,30}?' + RATE, re.I)),
+    ('lease comp line (tenant, SF, and rent per SF)', re.compile(SFN + r'[^\n]{0,60}?' + RATE + '|' + RATE + r'[^\n]{0,60}?' + SFN)),
+    ('comp or availability table', None),
+]
+DEAL_TERMS = re.compile(r'base rent|\bTI\b|tenant improvement|free rent|abatement|escalat|\bLOI\b|counter|proposal|premises|commencement|renewal option|security deposit', re.I)
+MARKET_WORD = re.compile(MARKET, re.I)
+TABLE_HEAD = re.compile(r'tenant|lessee|occupier|building|address|property', re.I)
+TABLE_SIZE = re.compile(r'\b(?:R?SF|size|square feet|avail\w*)\b', re.I)
+TABLE_RATE = re.compile(r'rent|rate|asking|\$/\s?sf|vacan', re.I)
+
+def table_hits(text):
+    """Markdown, CSV, or TSV tables whose header names a tenant or building, a size, and a rent or vacancy
+    column, followed by at least two rows that carry an SF count, a percentage, or a dollar figure."""
+    hits = []
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        cells = re.split(r'\s*[|,\t]\s*', line.strip().strip('|'))
+        if len(cells) < 3:
+            continue
+        head = ' '.join(cells)
+        if not (TABLE_HEAD.search(head) and TABLE_SIZE.search(head) and TABLE_RATE.search(head)):
+            continue
+        rows = 0
+        for nxt in lines[i + 1:i + 30]:
+            if not re.search(r'[|,\t]', nxt):
+                break
+            if re.search(r'\d[\d,]{3,}|\d%|\$\s?\d', nxt):
+                rows += 1
+        if rows >= 2 and not DEAL_TERMS.search(head):
+            hits.append((i + 1, line.strip()[:90]))
+    return hits
+
+def text_hits(text):
+    found = []
+    for n, line in enumerate(text.splitlines(), 1):
+        deal_line = DEAL_TERMS.search(line) and not MARKET_WORD.search(line)
+        for label, rx in TEXT:
+            if rx is None:
+                continue
+            if deal_line and label.startswith(('lease comp line', 'asking or market')):
+                continue
+            if deal_line and label.startswith('SF count') and not re.search(r'vacant|absorbed', line, re.I):
+                continue
+            m = rx.search(line)
+            if m:
+                found.append((label, n, m.group(0).strip()[:70]))
+                break
+    for n, snippet in table_hits(text):
+        found.append(('comp or availability table', n, snippet))
+    return found
 
 def staged():
     out = subprocess.run(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'],
@@ -50,7 +129,7 @@ def onedrive_index():
         open(cache, 'w').write('\n'.join(rows))
     return set(open(cache).read().splitlines())
 
-problems = []
+hard, soft = [], []
 od = None
 for p in staged():
     base = os.path.basename(p)
@@ -58,27 +137,40 @@ for p in staged():
     if p.startswith('.githooks/'):
         continue
     data = blob(p)
+    is_text = b'\0' not in data[:8000]
     if ext in DATA_EXT and NAME.search(base):
-        problems.append((p, 'file name looks like market data'))
-    if ext in CONTENT_EXT and b'\0' not in data[:8000]:
+        hard.append((p, 'file name looks like market data'))
+    if ext in CONTENT_EXT and is_text:
         text = data.decode('utf-8', 'ignore')
         for label, rx in CONTENT:
             if rx.search(text):
-                problems.append((p, label))
+                hard.append((p, label))
                 break
-    if ext in DATA_EXT or b'\0' in data[:8000]:
+    if ext in DATA_EXT or not is_text:
         if od is None:
             od = onedrive_index()
         if f"{base.lower()}\t{len(data)}" in od:
-            problems.append((p, 'identical name and size to a file in OneDrive (copied directly from OneDrive)'))
+            hard.append((p, 'identical name and size to a file in OneDrive (copied directly from OneDrive)'))
+    if is_text and not SKIP_TEXT.search(p):
+        for label, line, snippet in text_hits(data.decode('utf-8', 'ignore')):
+            soft.append((p, f'line {line}: {label}: "{snippet}"'))
 
-if problems:
+override = os.environ.get('MARKET_GUARD_OVERRIDE') == '1'
+if hard:
     sys.stderr.write('\nBLOCKED by the market data guard (.githooks/pre-commit):\n')
-    for p, why in problems:
+    for p, why in hard:
         sys.stderr.write(f'  {p}: {why}\n')
+if soft:
+    head = 'WARNING (overridden with MARKET_GUARD_OVERRIDE=1)' if override else 'BLOCKED'
+    sys.stderr.write(f'\n{head}: market statistics found in text (.githooks/pre-commit):\n')
+    for p, why in soft:
+        sys.stderr.write(f'  {p}: {why}\n')
+if hard or (soft and not override):
     sys.stderr.write('\nMarket research data stays on OneDrive and in Supabase, never on GitHub.\n'
-                     'Unstage it (git restore --staged <file>) and add it to .gitignore.\n'
-                     'If this is a false positive, say so to Charlie before bypassing with --no-verify.\n\n')
+                     'Remove the figures (or unstage the file and add it to .gitignore).\n'
+                     'Deal terms in counters and LOIs are fine. If a text hit is a false positive or a\n'
+                     'made up example, Charlie can commit with MARKET_GUARD_OVERRIDE=1 git commit ...\n'
+                     'Claude never sets the override and never uses --no-verify.\n\n')
     sys.exit(1)
 sys.exit(0)
 PYEOF
