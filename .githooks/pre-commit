@@ -24,10 +24,12 @@
 # Modes:
 #   (no arguments)            git runs it as the pre-commit hook on the staged changes.
 #   --range <before> <after>  scans every commit in a pushed range, each against its first
-#                             parent (the GitHub Actions workflow uses this; a zero or missing
-#                             <before> scans every commit reachable from <after>). Reports
-#                             commit, file, line, and rule only, never the matched text, and
-#                             ignores the override.
+#                             parent (the GitHub Actions workflow uses this). A zero or missing
+#                             <before> means a new branch: in Actions (GITHUB_REF_NAME set) it
+#                             scans the commits not already on another branch of the repo; run
+#                             by hand it scans every commit reachable from <after> (full audit).
+#                             Reports commit, file, line, and rule only, never the matched text,
+#                             and ignores the override.
 # Enable per clone:  git config core.hooksPath .githooks
 exec python3 - "$@" <<'PYEOF'
 import os, re, subprocess, sys, time
@@ -240,7 +242,16 @@ def run_range(before, after):
     def git(*a):
         return subprocess.run(['git', *a], capture_output=True, text=True).stdout
     zero = not before or set(before) == {'0'} or not git('cat-file', '-t', before).strip()
-    revs = git('rev-list', '--reverse', after) if zero else git('rev-list', '--reverse', f'{before}..{after}')
+    branch = os.environ.get('GITHUB_REF_NAME', '') if os.environ.get('GITHUB_EVENT_NAME') == 'push' else ''
+    if not zero:
+        revs = git('rev-list', '--reverse', f'{before}..{after}')
+    elif branch:
+        # New branch pushed to GitHub: only the commits no other branch already holds.
+        others = [r for r in git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin').split()
+                  if r not in (f'refs/remotes/origin/{branch}', 'refs/remotes/origin/HEAD')]
+        revs = git('rev-list', '--reverse', after, '--not', *others) if others else git('rev-list', '--reverse', after)
+    else:
+        revs = git('rev-list', '--reverse', after)
     commits = revs.split()
     failed = 0
     for c in commits:
