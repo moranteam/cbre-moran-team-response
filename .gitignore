@@ -1,0 +1,4 @@
+
+# Syncthing conflict and version copies: local only, never on GitHub
+*.sync-conflict-*
+.stversions/
