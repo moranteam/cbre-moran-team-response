@@ -1,5 +1,6 @@
 #!/bin/sh
-# pre-commit | moranteam market data guard (rule adopted 2026-09-22, text checks added 2026-09-22)
+# pre-commit | moranteam market data guard (rule adopted 2026-09-22, text checks added 2026-09-22,
+#              text checks limited to added lines 2026-09-23)
 # Blocks commits that add market research data to any repo:
 #   lease comps, tenant demand (tenants in the market, requirements lists),
 #   market statistics and research reports (CBRE Research, MarketIQ, CoStar, VTS exports),
@@ -9,10 +10,14 @@
 # Two kinds of checks:
 #   HARD: data files named like market data, export headers in data files, OneDrive copies.
 #         Always block.
-#   TEXT: every staged text file, .md and code included, is scanned for market statistics
-#         written into prose or code (vacancy, absorption, availability, comps, asking rent
-#         per SF, SF counts next to vacant or leased). Hits block unless the person running
-#         the commit sets MARKET_GUARD_OVERRIDE=1, which prints the hits and lets it through.
+#         HARD checks always read the whole file.
+#   TEXT: the lines a commit adds to any text file, .md and code included, are scanned for
+#         market statistics written into prose or code (vacancy, absorption, availability,
+#         comps, asking rent per SF, SF counts next to vacant or leased). Only added lines are
+#         checked (staged diff, rename detection on): a pure rename adds nothing, a brand new
+#         file is all added lines, and lines a commit leaves alone are not re-checked. Hits
+#         block unless the person running the commit sets MARKET_GUARD_OVERRIDE=1, which
+#         prints the hits and lets it through.
 #         Deal terms (base rent, TI, free rent, escalations in counters and LOIs) pass.
 # Enable per clone:  git config core.hooksPath .githooks
 exec python3 - "$@" <<'PYEOF'
@@ -85,8 +90,10 @@ def table_hits(text):
             hits.append((i + 1, line.strip()[:90]))
     return hits
 
-def text_hits(text):
+def text_hits(text, numbers=None):
+    """Scan text. numbers, when given, maps each line of text (in order) to its real line number."""
     found = []
+    real = (lambda i: numbers[i - 1]) if numbers else (lambda i: i)
     for n, line in enumerate(text.splitlines(), 1):
         deal_line = DEAL_TERMS.search(line) and not MARKET_WORD.search(line)
         for label, rx in TEXT:
@@ -98,14 +105,44 @@ def text_hits(text):
                 continue
             m = rx.search(line)
             if m:
-                found.append((label, n, m.group(0).strip()[:70]))
+                found.append((label, real(n), m.group(0).strip()[:70]))
                 break
     for n, snippet in table_hits(text):
-        found.append(('comp or availability table', n, snippet))
+        found.append(('comp or availability table', real(n), snippet))
     return found
 
+_ADDED = None
+
+def added_lines(p):
+    """Lines this commit adds to path p: (new line numbers, text). The whole staged diff is read
+    once with rename detection (a pathspec would hide the rename source), so a pure rename adds
+    nothing and a new file with no rename source is all added lines."""
+    global _ADDED
+    if _ADDED is None:
+        _ADDED = {}
+        out = subprocess.run(['git', '-c', 'core.quotePath=false', 'diff', '--cached', '-M', '--unified=0',
+                              '--no-color', '--no-ext-diff', '--diff-filter=ACMR'],
+                             capture_output=True).stdout.decode('utf-8', 'ignore')
+        cur, n = None, 0
+        for line in out.splitlines():
+            if line.startswith('diff --git '):
+                cur = None
+            elif line.startswith('+++ '):
+                cur = line[6:].rstrip('\t') if line.startswith('+++ b/') else None
+                if cur is not None:
+                    _ADDED.setdefault(cur, ([], []))
+            elif line.startswith('@@'):
+                m = re.search(r'\+(\d+)', line)
+                n = int(m.group(1)) if m else 0
+            elif cur is not None and line.startswith('+'):
+                _ADDED[cur][0].append(n)
+                _ADDED[cur][1].append(line[1:])
+                n += 1
+    numbers, lines = _ADDED.get(p, ([], []))
+    return numbers, '\n'.join(lines)
+
 def staged():
-    out = subprocess.run(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'],
+    out = subprocess.run(['git', 'diff', '--cached', '-M', '--name-only', '--diff-filter=ACMR', '-z'],
                          capture_output=True).stdout.decode()
     return [p for p in out.split('\0') if p]
 
@@ -152,7 +189,8 @@ for p in staged():
         if f"{base.lower()}\t{len(data)}" in od:
             hard.append((p, 'identical name and size to a file in OneDrive (copied directly from OneDrive)'))
     if is_text and not SKIP_TEXT.search(p):
-        for label, line, snippet in text_hits(data.decode('utf-8', 'ignore')):
+        numbers, added = added_lines(p)
+        for label, line, snippet in (text_hits(added, numbers) if numbers else []):
             soft.append((p, f'line {line}: {label}: "{snippet}"'))
 
 override = os.environ.get('MARKET_GUARD_OVERRIDE') == '1'
