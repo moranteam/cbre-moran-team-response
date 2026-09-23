@@ -1,0 +1,84 @@
+#!/bin/sh
+# pre-commit | moranteam market data guard (rule adopted 2026-09-22)
+# Blocks commits that add market research data to any repo:
+#   lease comps, tenant demand (tenants in the market, requirements lists),
+#   market statistics and research reports (CBRE Research, MarketIQ, CoStar, VTS exports),
+#   availability data, and files copied directly from OneDrive.
+# Code, skills, instructions, client names, and deal terms are fine.
+# Enable per clone:  git config core.hooksPath .githooks
+exec python3 - "$@" <<'PYEOF'
+import os, re, subprocess, sys, time
+
+DATA_EXT = {'.pdf', '.xlsx', '.xls', '.xlsm', '.csv', '.tsv', '.json', '.log', '.txt', '.parquet',
+            '.gz', '.zip', '.docx', '.pptx', '.html', '.htm'}
+CONTENT_EXT = {'.csv', '.tsv', '.json', '.txt', '.log', '.html', '.htm', '.xml'}
+NAME = re.compile(r'comp(s|set|_set| set)?\b|lease.?(comps|transactions)|availab|avails\b|tenants?.?in.?(the.?)?market'
+                  r'|requirements?.?list|tenant.?demand|demand.?data|market.?(report|stats|statistics|survey|data|view)'
+                  r'|marketiq|market.?iq|costar|vts.?(export|import)|figures.?q[1-4]|q[1-4].?\d{2,4}.*figures'
+                  r'|snapshot.?q[1-4]|quarter.?end.?presentation|research.?report|brochure|onedrive', re.I)
+CONTENT = [
+    ('CoStar export header', re.compile(r'PropertyID|Building Class.{0,80}RBA|Total Available Space \(SF\)|Percent Leased', re.I)),
+    ('lease comp table', re.compile(r'(Sign(ed)? Date|Lease Sign Date).{0,200}(Starting Rent|Effective Rent|Free Rent|TI Allowance)', re.I | re.S)),
+    ('VTS export header', re.compile(r'Deal Stage.{0,120}(Tenant Name|Requirement Size|Proposal Date)', re.I | re.S)),
+    ('research report marker', re.compile(r'MarketView|CBRE Research|Figures \| Q[1-4]|MarketIQ', re.I)),
+    ('availability table', re.compile(r'(Available SF|SF Available|Direct Available|Sublease Available).{0,200}(Asking Rent|Rate|Available Date)', re.I | re.S)),
+    ('tenants in market list', re.compile(r'tenants in (the )?market|active requirements?', re.I)),
+]
+
+def staged():
+    out = subprocess.run(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'],
+                         capture_output=True).stdout.decode()
+    return [p for p in out.split('\0') if p]
+
+def blob(p):
+    return subprocess.run(['git', 'show', f':{p}'], capture_output=True).stdout
+
+def onedrive_index():
+    root = os.path.expanduser('~/Library/CloudStorage/OneDrive-CBRE,Inc')
+    cache = os.path.expanduser('~/.claude/cache/onedrive-name-size.txt')
+    if not os.path.isdir(root):
+        return set()
+    if not os.path.isfile(cache) or time.time() - os.path.getmtime(cache) > 86400:
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        rows = []
+        for dp, dn, fn in os.walk(root):
+            for f in fn:
+                try:
+                    rows.append(f"{f.lower()}\t{os.stat(os.path.join(dp, f)).st_size}")
+                except OSError:
+                    pass
+        open(cache, 'w').write('\n'.join(rows))
+    return set(open(cache).read().splitlines())
+
+problems = []
+od = None
+for p in staged():
+    base = os.path.basename(p)
+    ext = os.path.splitext(base)[1].lower()
+    if p.startswith('.githooks/'):
+        continue
+    data = blob(p)
+    if ext in DATA_EXT and NAME.search(base):
+        problems.append((p, 'file name looks like market data'))
+    if ext in CONTENT_EXT and b'\0' not in data[:8000]:
+        text = data.decode('utf-8', 'ignore')
+        for label, rx in CONTENT:
+            if rx.search(text):
+                problems.append((p, label))
+                break
+    if ext in DATA_EXT or b'\0' in data[:8000]:
+        if od is None:
+            od = onedrive_index()
+        if f"{base.lower()}\t{len(data)}" in od:
+            problems.append((p, 'identical name and size to a file in OneDrive (copied directly from OneDrive)'))
+
+if problems:
+    sys.stderr.write('\nBLOCKED by the market data guard (.githooks/pre-commit):\n')
+    for p, why in problems:
+        sys.stderr.write(f'  {p}: {why}\n')
+    sys.stderr.write('\nMarket research data stays on OneDrive and in Supabase, never on GitHub.\n'
+                     'Unstage it (git restore --staged <file>) and add it to .gitignore.\n'
+                     'If this is a false positive, say so to Charlie before bypassing with --no-verify.\n\n')
+    sys.exit(1)
+sys.exit(0)
+PYEOF
